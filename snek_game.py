@@ -2,11 +2,11 @@
 Classic(ish) snake game using Pyxel library.
 """
 
-from __future__ import annotations
-import pyxel, settings, utils
-from grid import Grid
-from snake import Snake
-from item_manager import ItemManager
+import time
+import pyxel, settings, common.utils as utils
+from common.grid import Grid
+from common.snake import Snake
+from common.item_manager import ItemManager
 
 @staticmethod
 def center_text(text: str, page_width: int, char_width: int = pyxel.FONT_WIDTH):
@@ -40,6 +40,10 @@ class SnekGame:
         self._grid = None
         self._item_manager = None
         self._snake = None
+        self._space_released = True
+
+        #Debug variables
+        self._frame_count = 0
 
         #Initialize game variables
         self.score = 0 
@@ -53,7 +57,7 @@ class SnekGame:
 
     def start_level(self, level: int):
         """Starts the specified level."""
-        self.game_paused = True
+        self.pause()
         self.reset(level)
         self.set_camera()
 
@@ -85,10 +89,6 @@ class SnekGame:
         self._item_manager = self.initialize_items()
         self._snake = self.initialize_snake()
         # pyxel.playm(0, loop = True) #TODO: add music
-    def redraw(self):
-        """Redraws the grid and snake."""
-        self.clear()
-        self._grid.redraw()
 
     def end(self):
         """Ends the current game."""
@@ -96,10 +96,6 @@ class SnekGame:
     def pause(self):
         """Pauses the game."""
         self.game_paused = True
-        #Draw the start screen
-        for i, line in enumerate(settings.START_TEXT):
-            pyxel.text(center_text(line, pyxel.width),
-                       pyxel.height // 2 - 20 + (i * 10), line, pyxel.COLOR_WHITE)
     def unpause(self):
         """Unpauses the game."""
         self.game_paused = False
@@ -127,9 +123,9 @@ class SnekGame:
             match new_head_position.tile_type:
                 case "empty": #Does nothing
                     pass
-                case "item_bomb": #Kills the snake
+                case "item_bomb": #Explodes the snake
                     self._grid.update_tile(*new_head_position.grid_coordinates,
-                                          "item_bomb_explosion", is_animated = True, animation_cycles = 1)
+                                          "animation.exploding_bomb", is_animated = True, animation_cycles = 1)
                     self.end()
                     pass
                 case "item_lemon": #Reverses controls until an apple is eaten
@@ -156,21 +152,27 @@ class SnekGame:
     def update(self):
         """Update game logic."""
 
+        self._grid.update()
+
         # Pause/unpause game if space is pressed
-        if not self.game_paused and pyxel.btn(pyxel.KEY_SPACE):
-            self.pause()
-            return
-        elif self.game_paused and pyxel.btn(pyxel.KEY_SPACE):
-            self.unpause()
-            return
-        
-        if not self.game_paused:
-            # Start/restart game if space is pressed and game is over or has not started
-            if self.game_over:
-                if pyxel.btn(pyxel.KEY_SPACE):
+        if pyxel.btn(pyxel.KEY_SPACE):
+            if self._space_released: # Require spacebar to be released before pausing/unpausing
+                self._space_timer = time.time()
+                if self.game_over:
+                    # Restart game if space is pressed and game is over
                     self.reset(self.level)
+                elif self.game_paused:
+                    # Unpause game if space is pressed and game is paused
+                    self.unpause()
                 else:
-                    return
+                    # Pause game if space is pressed and game is not paused
+                    self.pause()
+            self._space_released = False
+        else:
+            self._space_released = True
+
+        
+        if not (self.game_paused or self.game_over):
             # Update game if not paused       
             if not self.game_over and not self.game_paused:   
                 # Check for key presses and change direction accordingly
@@ -211,15 +213,34 @@ class SnekGame:
 
     def draw(self):
         """Draw game graphics."""
-        
-        self._grid.update()
+
+        self.clear() #Clear the screen
+        self._grid.draw_all_tiles() #Draw the grid
 
         # Draw the score with dark blue background
         pyxel.rect(0, 0, pyxel.width, 10, 1)
-        pyxel.text(center_text(f"Score: {self.score}", pyxel.width), 2, f"Score: {self.score}", pyxel.COLOR_WHITE)
+        pyxel.text(center_text(f"Score: {self.score}", pyxel.width), 3, f"Score: {self.score}", pyxel.COLOR_WHITE)
+        if settings.DEBUG:
+            self._frame_count += 1
+            pyxel.text(3, 3, f"{self._frame_count}", pyxel.COLOR_YELLOW)
+
 
         if self.game_over:
-            pyxel.text(center_text("GAME OVER", pyxel.width), pyxel.height // 2, "GAME OVER", pyxel.COLOR_RED)
-            pyxel.text(center_text("press SPACE to restart", pyxel.width), pyxel.height // 2 + 10, "Press SPACE to restart", pyxel.COLOR_WHITE)
+            #Draw the game over screen
+            pyxel.text(center_text("GAME OVER", pyxel.width), 
+                   pyxel.height // 2, 
+                   "GAME OVER", 
+                   pyxel.COLOR_RED)
+            pyxel.text(center_text("press SPACE to restart", pyxel.width), 
+                    pyxel.height // 2 + 10, 
+                    "press SPACE to restart", 
+                    pyxel.COLOR_WHITE)
+        elif self.game_paused:
+            #Draw the start screen
+            for i, line in enumerate(settings.START_TEXT):
+                pyxel.text(center_text(line, pyxel.width),
+                        pyxel.height // 2 - 20 + (i * 10), 
+                        line, 
+                        pyxel.COLOR_WHITE)
     
 SnekGame()

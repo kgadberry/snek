@@ -8,8 +8,8 @@ FPS = 8 #Frames per second
 SCALE = 2 #Scale of the game window
 ASSET_FILE = "bin.pyxres" #File containing assets
 SPRITESHEET_NUMBER = 0
-BACKGROUND_COLOR = 0 #Background is color 0
-TRANSPARENT_COLOR = 6 #Color 6 is transparent
+BACKGROUND_COLOR = 0 #Background is color 0 (black)
+TRANSPARENT_COLOR = 6 #Color 6 is transparent (light blue)
 TILE_SIZE = {
     "width": 8,
     "height": 8
